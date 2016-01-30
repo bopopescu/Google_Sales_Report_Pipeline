@@ -37,7 +37,7 @@ print "Looking for Sales files in s3 not downloaded yet"
 
 while start_date <= end_date:
 
-    rs = check_output(["s3cmd", "ls", "s3://bibusuu/Google_sales_reports/%s.zip" % start_date.strftime("%Y%m")])
+    rs = check_output(["s3cmd", "ls", "s3://bibusuu/Google_sales_reports/%s/" % start_date.strftime("%Y%m")])
 
     if len(rs) > 1:
          print "File Exists for %s \n Moving on ;-)" % start_date.strftime("%Y%m")
@@ -76,12 +76,12 @@ conn = psycopg2.connect(conn_string)
 cursor = conn.cursor()
 
 # Update the redshift table with the new results
-print "Deleting old table Google_raw2"
+print "Deleting old table Google_raw_2"
 cursor.execute("drop table if exists Google_raw_2;")
 print "Creating new table \n Google_raw_2"
 cursor.execute("CREATE table Google_raw_2( order_number varchar(50), order_charged_date varchar(15), order_charged_ts int, financial_status varchar(25), device_model varchar(50), product_title varchar(150), product_id varchar(200), product_type varchar(100), SKU varchar(200), currency varchar(50), Price decimal, taxes decimal, charged_amount decimal, city varchar(250), state varchar(100), postal_code varchar(100), country varchar(20) );")
 print "Copying Google data from S3 to  \n Google_raw_2 "
-cursor.execute("COPY Google_raw2  FROM 's3://bibusuu/Google_sales_reports/'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' csv ZIP;")
+cursor.execute("COPY Google_raw_2  FROM 's3://bibusuu/Google_sales_reports/'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' csv IGNOREHEADER 1;")
 # print "Deleting old table Google_raw_2"
 # cursor.execute("Drop Table if exists \n ITunes_raw_first_half")
 # print "Renaming table  \n ITunes_raw_2 \nto \n ITunes_raw_first_half"
