@@ -9,8 +9,6 @@ import psycopg2
 import zipfile
 
 
-
-
 config = configparser.ConfigParser()
 ini = config.read('conf2.ini')
 
@@ -23,7 +21,7 @@ RED_USER = config.get('Redshift Creds', 'user')
 RED_PASSWORD = config.get('Redshift Creds', 'password')
 
 
-ISR = "Itunes_sales_reports"
+
 
 
 conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
@@ -45,26 +43,26 @@ while start_date <= end_date:
     else:
 
         print "Downloading Google sales report for %s" % start_date.strftime("%Y%m")
-        call(["gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/sales/salesreport_%s.zip" % start_date.strftime("%Y%m") , "output/google_sales_data_%s.zip" % start_date.strftime("%Y%m")])
+        call(["gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/sales/salesreport_%s.zip" % start_date.strftime("%Y%m") , "google_sales_data_%s.zip" % start_date.strftime("%Y%m")])
 
         print "Unzipping File"
-        zip = "output/google_sales_data_%s.zip" % start_date.strftime("%Y%m")
+        zip = "google_sales_data_%s.zip" % start_date.strftime("%Y%m")
         with zipfile.ZipFile(zip, "r") as z:
-            z.extractall("output" )
+            z.extractall("" )
 
 
         print "Uploading Google sales report for %s" % start_date.strftime("%Y%m")
-        call(["s3cmd", "put", "output/salesreport_%s.csv" % start_date.strftime("%Y%m")  , "s3://bibusuu/Google_sales_reports/%s/salesreport_%s.csv" % (start_date.strftime("%Y%m"),start_date.strftime("%Y%m"))])
+        call(["s3cmd", "put", "salesreport_%s.csv" % start_date.strftime("%Y%m")  , "s3://bibusuu/Google_sales_reports/%s/salesreport_%s.csv" % (start_date.strftime("%Y%m"),start_date.strftime("%Y%m"))])
 
         print "Removing local file for %s.zip" % start_date
-        os.remove("output/google_sales_data_%s.zip" % start_date.strftime("%Y%m"))
-        os.remove("output/salesreport_%s.csv" % start_date.strftime("%Y%m"))
+        os.remove("google_sales_data_%s.zip" % start_date.strftime("%Y%m"))
+        os.remove("salesreport_%s.csv" % start_date.strftime("%Y%m"))
 
 
 
     start_date = start_date + timedelta(days=30)
 
-print "Finished processing Google Sales Data\nNow Importing into redshift"
+print "Finished processing Google Sales Data \n Now Importing into redshift"
 
 # Update files to redshift once completed
 
@@ -79,14 +77,14 @@ cursor = conn.cursor()
 print "Deleting old table Google_raw_2"
 cursor.execute("drop table if exists Google_raw_2;")
 print "Creating new table \n Google_raw_2"
-cursor.execute("CREATE table Google_raw_2( order_number varchar(50), order_charged_date varchar(15), order_charged_ts int, financial_status varchar(25), device_model varchar(50), product_title varchar(150), product_id varchar(200), product_type varchar(100), SKU varchar(200), currency varchar(50), Price decimal, taxes decimal, charged_amount decimal, city varchar(250), state varchar(100), postal_code varchar(100), country varchar(20) );")
+cursor.execute("CREATE table Google_raw_2( order_number varchar(50), order_charged_date varchar(15), order_charged_ts int, financial_status varchar(25), device_model varchar(50), product_title varchar(150), product_id varchar(200), product_type varchar(100), SKU varchar(200), currency varchar(50), Price varchar(200), taxes varchar(200), charged_amount varchar(200), city varchar(250), state varchar(100), postal_code varchar(100), country varchar(20) );")
 print "Copying Google data from S3 to  \n Google_raw_2 "
 cursor.execute("COPY Google_raw_2  FROM 's3://bibusuu/Google_sales_reports/'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' csv IGNOREHEADER 1;")
-# print "Deleting old table Google_raw_2"
-# cursor.execute("Drop Table if exists \n ITunes_raw_first_half")
-# print "Renaming table  \n ITunes_raw_2 \nto \n ITunes_raw_first_half"
-# cursor.execute("ALTER TABLE ITunes_raw_2 RENAME TO ITunes_raw_first_half")
-
-
+print "Deleting old table Google_raw"
+cursor.execute("drop table if exists Google_raw;")
+print "Aggregating and Cleaning Google_raw_2"
+cursor.execute("create table Google_raw as select order_charged_date as purchase_date, split_part(order_number, '..',1) as order_number, case when split_part(order_number, '..',2) != '' then (split_part(order_number, '..',2)::INTEGER +1 ) else 0 end  as recurring_plus_1, financial_status as status, product_title as model, product_id as app_id, product_type as subscription, currency as currency, replace(price,',','')::float as price, replace(taxes,',','')::float as taxes, replace(charged_amount,',','')::float as charged_amount, country as country from  google_raw_2; ")
+print 'Deleting Staging table'
+cursor.execute("drop table if exists google_raw_2;")
 conn.commit()
 conn.close()
