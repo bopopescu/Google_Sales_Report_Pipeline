@@ -11,7 +11,7 @@ currency as currency,
 replace(price,',','')::float as price,
 replace(taxes,',','')::float as taxes,
 replace(charged_amount,',','')::float as charged_amount,
-replace(charged_amount,',','')::float/ber.rate as eur_amount
+replace(charged_amount,',','')::float/ber.rate as eur_amount,
 country as country
 from  google_raw_2 google
 left join bs_exchange_rates ber
