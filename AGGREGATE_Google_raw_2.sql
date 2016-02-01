@@ -11,5 +11,8 @@ currency as currency,
 replace(price,',','')::float as price,
 replace(taxes,',','')::float as taxes,
 replace(charged_amount,',','')::float as charged_amount,
+replace(charged_amount,',','')::float/ber.rate as eur_amount
 country as country
-from  google_raw_2;
+from  google_raw_2 google
+left join bs_exchange_rates ber
+on date((TIMESTAMP 'epoch' + ber.timestamp * INTERVAL '1 Second ')) = google.order_charged_date and ber.currency = google.currency ;
