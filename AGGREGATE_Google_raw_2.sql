@@ -2,7 +2,7 @@ create table Google_raw as
 select
 order_charged_date as purchase_date,
 split_part(order_number, '..',1) as order_number,
-case when split_part(order_number, '..',2) != '' then (split_part(order_number, '..',2)::INTEGER +1 ) else 0 end  as recurring_plus_1,
+case when split_part(order_number, '..',2) != '' then (split_part(order_number, '..',2)::INTEGER +1 ) else 0 end  as recurring,
 financial_status as status,
 product_title as model,
 product_id as app_id,
