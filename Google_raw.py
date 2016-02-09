@@ -3,10 +3,11 @@ __author__ = 'brucepannaman'
 import os
 import boto
 import configparser
-from datetime import date, timedelta
+from datetime import date
 from subprocess import call, check_output
 import psycopg2
 import zipfile
+from dateutil.relativedelta import relativedelta
 
 
 config = configparser.ConfigParser()
@@ -28,7 +29,7 @@ conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 bucket = conn.get_bucket('bibusuu')
 
 start_date = date(2013,9,1)
-end_date = date.today() - timedelta(days=1)
+end_date = date.today()
 
 
 print "Looking for Sales files in s3 not downloaded yet"
@@ -60,7 +61,7 @@ while start_date <= end_date:
 
 
 
-    start_date = start_date + timedelta(days=30)
+    start_date = start_date + relativedelta(months=1)
 
 print "Finished processing Google Sales Data \n Now Importing into redshift"
 
