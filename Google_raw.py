@@ -38,7 +38,7 @@ while start_date <= end_date:
 
     rs = check_output(["s3cmd", "ls", "s3://bibusuu/Google_sales_reports/%s/" % start_date.strftime("%Y%m")])
 
-    if len(rs) > 1:
+    if len(rs) > 1 and start_date.strftime('%Y-%m') != end_date.strftime('%Y-%m'):
          print "File Exists for %s \n Moving on ;-)" % start_date.strftime("%Y%m")
 
     else:
