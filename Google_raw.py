@@ -44,10 +44,10 @@ while start_date <= end_date:
     else:
 
         print "Downloading Google sales report for %s" % start_date.strftime("%Y%m")
-        call(["./gsutil/gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/sales/salesreport_%s.zip" % start_date.strftime("%Y%m") , "google_sales_data_%s.zip" % start_date.strftime("%Y%m")])
+        call(["./gsutil/gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/sales/salesreport_%s.zip" % start_date.strftime("%Y%m") , "/home/busuuadmin/Google_Sales_Report_Pipeline/google_sales_data_%s.zip" % start_date.strftime("%Y%m")])
 
         print "Unzipping File"
-        zip = "google_sales_data_%s.zip" % start_date.strftime("%Y%m")
+        zip = "/home/busuuadmin/Google_Sales_Report_Pipeline/google_sales_data_%s.zip" % start_date.strftime("%Y%m")
         with zipfile.ZipFile(zip, "r") as z:
             z.extractall("" )
 
@@ -56,7 +56,7 @@ while start_date <= end_date:
         call(["s3cmd", "put", "salesreport_%s.csv" % start_date.strftime("%Y%m")  , "s3://bibusuu/Google_sales_reports/%s/salesreport_%s.csv" % (start_date.strftime("%Y%m"),start_date.strftime("%Y%m"))])
 
         print "Removing local file for %s.zip" % start_date
-        os.remove("google_sales_data_%s.zip" % start_date.strftime("%Y%m"))
+        os.remove("/home/busuuadmin/Google_Sales_Report_Pipeline/google_sales_data_%s.zip" % start_date.strftime("%Y%m"))
         os.remove("salesreport_%s.csv" % start_date.strftime("%Y%m"))
 
 
