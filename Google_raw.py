@@ -3,7 +3,7 @@ __author__ = 'brucepannaman'
 import os
 import boto
 import configparser
-from datetime import date
+from datetime import date, timedelta
 from subprocess import call, check_output
 import psycopg2
 import zipfile
@@ -29,7 +29,7 @@ conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 bucket = conn.get_bucket('bibusuu')
 
 start_date = date(2013,9,1)
-end_date = date.today()
+end_date = date.today() - timedelta(1)
 
 
 print "Looking for Sales files in s3 not downloaded yet"
