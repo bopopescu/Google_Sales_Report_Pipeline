@@ -29,12 +29,12 @@ conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 bucket = conn.get_bucket('bibusuu')
 
 start_date = date(2013,9,1)
-end_date = date.today() - timedelta(1)
+end_date = date.today()
 
 
 print "Looking for Sales files in s3 not downloaded yet"
 
-while start_date <= end_date:
+while start_date < end_date:
 
     rs = check_output(["s3cmd", "ls", "s3://bibusuu/Google_sales_reports/%s/" % start_date.strftime("%Y%m")])
 
