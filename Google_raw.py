@@ -77,15 +77,15 @@ cursor = conn.cursor()
 # Update the redshift table with the new results
 print "Deleting old table Google_raw_2"
 cursor.execute("drop table if exists Google_raw_2;")
-print "Creating new table \n Google_raw_2"
-cursor.execute("CREATE table Google_raw_2( order_number varchar(50), order_charged_date varchar(15), order_charged_ts int, financial_status varchar(25), device_model varchar(50), product_title varchar(150), product_id varchar(200), product_type varchar(100), SKU varchar(200), currency varchar(50), Price varchar(200), taxes varchar(200), charged_amount varchar(200), city varchar(250), state varchar(100), postal_code varchar(100), country varchar(20) );")
+print "Creating new table \n Google_raw_20"
+cursor.execute("CREATE table Google_raw_20( order_number varchar(50), order_charged_date varchar(15), order_charged_ts int, financial_status varchar(25), device_model varchar(50), product_title varchar(150), product_id varchar(200), product_type varchar(100), SKU varchar(200), currency varchar(50), Price varchar(200), taxes varchar(200), charged_amount varchar(200), city varchar(250), state varchar(100), postal_code varchar(100), country varchar(20) );")
 print "Copying Google data from S3 to  \n Google_raw_2 "
-cursor.execute("COPY Google_raw_2  FROM 's3://bibusuu/Google_sales_reports/'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' IGNOREHEADER 1 csv;" %(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
+cursor.execute("COPY Google_raw_20  FROM 's3://bibusuu/Google_sales_reports/'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' IGNOREHEADER 1 csv;" %(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
 print "Deleting old table Google_raw"
 cursor.execute("drop table if exists Google_raw;")
-print "Aggregating and Cleaning Google_raw_2"
-cursor.execute("create table Google_raw as select order_charged_date as purchase_date, split_part(order_number, '..',1) as order_number, case when split_part(order_number, '..',2) != '' then (split_part(order_number, '..',2)::INTEGER +1 ) else 0 end  as recurring, financial_status as status, product_title as model, product_id as app_id, product_type as subscription, google.currency as currency, replace(price,',','')::float as price, replace(taxes,',','')::float as taxes, replace(charged_amount,',','')::float as charged_amount, replace(charged_amount,',','')::float/ber.rate as eur_amount, country as country from  google_raw_2 google left join bs_exchange_rates ber  on date((TIMESTAMP 'epoch' + ber.timestamp * INTERVAL '1 Second ')) = google.order_charged_date and ber.currency = google.currency ; ")
+print "Aggregating and Cleaning Google_raw_20"
+cursor.execute("create table Google_raw as select order_charged_date as purchase_date, split_part(order_number, '..',1) as order_number, case when split_part(order_number, '..',2) != '' then (split_part(order_number, '..',2)::INTEGER +1 ) else 0 end  as recurring, financial_status as status, product_title as model, product_id as app_id, product_type as subscription, google.currency as currency, replace(price,',','')::float as price, replace(taxes,',','')::float as taxes, replace(charged_amount,',','')::float as charged_amount, replace(charged_amount,',','')::float/ber.rate as eur_amount, country as country from  google_raw_20 google left join bs_exchange_rates ber  on date((TIMESTAMP 'epoch' + ber.timestamp * INTERVAL '1 Second ')) = google.order_charged_date and ber.currency = google.currency ; ")
 print 'Deleting Staging table'
-cursor.execute("drop table if exists google_raw_2;")
+cursor.execute("drop table if exists google_raw_20;")
 conn.commit()
 conn.close()
