@@ -39,6 +39,7 @@ from gslib import copy_helper
 from gslib.cloud_api import NotFoundException
 from gslib.cloud_api import ServiceException
 from gslib.exception import CommandException
+from gslib.exception import NO_URLS_MATCHED_GENERIC
 from gslib.storage_url import StorageUrlFromString
 import gslib.tests.testcase as testcase
 from gslib.tests.util import ObjectToURI as suri
@@ -420,6 +421,31 @@ class GsutilNamingTests(testcase.GsUtilUnitTestCase):
     expected = set([suri(dst_bucket_uri, 'dir3/dir2/foo')])
     self.assertEqual(expected, actual)
 
+  def testCopyingFileToDirRecursive(self):
+    """Tests copying a file with -R."""
+    src_file = self.CreateTempFile(file_name='foo')
+    dst_bucket_uri = self.CreateBucket()
+    self.RunCommand('cp', ['-R', src_file,
+                           suri(dst_bucket_uri, 'dir/foo')])
+    actual = set(str(u) for u in self._test_wildcard_iterator(
+        suri(dst_bucket_uri, '**')).IterAll(expand_top_level_buckets=True))
+    expected = set([suri(dst_bucket_uri, 'dir/foo')])
+    self.assertEqual(expected, actual)
+
+  def testCopyingMultipleFilesToDirRecursive(self):
+    """Tests copying multiple files with -R."""
+    src_dir = self.CreateTempDir()
+    src_file1 = self.CreateTempFile(tmpdir=src_dir, file_name='foo')
+    src_file2 = self.CreateTempFile(tmpdir=src_dir, file_name='bar')
+    dst_bucket_uri = self.CreateBucket()
+    self.RunCommand('cp', ['-R', src_file1, src_file2,
+                           suri(dst_bucket_uri, 'dir/foo')])
+    actual = set(str(u) for u in self._test_wildcard_iterator(
+        suri(dst_bucket_uri, '**')).IterAll(expand_top_level_buckets=True))
+    expected = set([suri(dst_bucket_uri, 'dir/foo/foo'),
+                    suri(dst_bucket_uri, 'dir/foo/bar')])
+    self.assertEqual(expected, actual)
+
   def testAttemptDirCopyWithoutRecursion(self):
     """Tests copying a directory without -R."""
     src_dir = self.CreateTempDir(test_files=1)
@@ -428,7 +454,7 @@ class GsutilNamingTests(testcase.GsUtilUnitTestCase):
       self.RunCommand('cp', [src_dir, dst_dir])
       self.fail('Did not get expected CommandException')
     except CommandException, e:
-      self.assertIn('No URLs matched', e.reason)
+      self.assertIn(NO_URLS_MATCHED_GENERIC, e.reason)
 
   def testNonRecursiveFileAndSameNameSubdir(self):
     """Tests copying a file and subdirectory of the same name without -R."""
@@ -760,7 +786,7 @@ class GsutilNamingTests(testcase.GsUtilUnitTestCase):
           'cp', [suri(src_bucket_uri, 'src_subdir'), dst_dir])
       self.fail('Did not get expected CommandException')
     except CommandException, e:
-      self.assertIn('No URLs matched', e.reason)
+      self.assertIn(NO_URLS_MATCHED_GENERIC, e.reason)
 
   def testCopyingBucketSubDirToBucketSubDir(self):
     """Tests copying a bucket subdir to another bucket subdir."""
@@ -1096,7 +1122,7 @@ class GsUtilCommandTests(testcase.GsUtilUnitTestCase):
       self.RunCommand('rm', [suri(dst_bucket_uri, 'non_existent')])
       self.fail('Did not get expected CommandException')
     except CommandException, e:
-      self.assertIn('No URLs matched', e.reason)
+      self.assertIn(NO_URLS_MATCHED_GENERIC, e.reason)
 
   # Now that gsutil ver computes a checksum it adds 1-3 seconds to test run
   # time (for in memory mocked tests that otherwise take ~ 0.1 seconds). Since

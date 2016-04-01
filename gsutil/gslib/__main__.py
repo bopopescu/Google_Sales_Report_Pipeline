@@ -61,11 +61,14 @@ import gslib.exception
 from gslib.exception import CommandException
 import apitools.base.py.exceptions as apitools_exceptions
 from gslib.util import CreateLock
+from gslib.util import DEBUGLEVEL_DUMP_REQUESTS
+from gslib.util import DEBUGLEVEL_DUMP_REQUESTS_AND_PAYLOADS
 from gslib.util import GetBotoConfigFileList
 from gslib.util import GetCertsFile
 from gslib.util import GetCleanupFiles
 from gslib.util import GsutilStreamHandler
 from gslib.util import ProxyInfoFromEnvironmentVar
+from gslib.util import UTF8
 from gslib.sig_handling import GetCaughtSignals
 from gslib.sig_handling import InitializeSignalHandling
 from gslib.sig_handling import RegisterSignalHandler
@@ -128,6 +131,8 @@ test_exception_traces = False
 def _CleanupSignalHandler(signal_num, cur_stack_frame):
   """Cleans up if process is killed with SIGINT, SIGQUIT or SIGTERM."""
   _Cleanup()
+  if gslib.util.CheckMultiprocessingAvailableAndInit().is_available:
+    gslib.command.TeardownMultiprocessingProcesses()
 
 
 def _Cleanup():
@@ -139,9 +144,14 @@ def _Cleanup():
 
 
 def _OutputAndExit(message):
-  """Outputs message and exists with code 1."""
-  from gslib.util import UTF8  # pylint: disable=g-import-not-at-top
-  if debug >= 2 or test_exception_traces:
+  """Outputs message to stderr and exits gsutil with code 1.
+
+  This function should only be called in single-process, single-threaded mode.
+
+  Args:
+    message: Message to print to stderr.
+  """
+  if debug >= DEBUGLEVEL_DUMP_REQUESTS or test_exception_traces:
     stack_trace = traceback.format_exc()
     err = ('DEBUG: Exception stack trace:\n    %s\n' %
            re.sub('\\n', '\n    ', stack_trace))
@@ -272,17 +282,17 @@ def main():
       _HandleCommandException(gslib.exception.CommandException(e.msg))
     for o, a in opts:
       if o in ('-d', '--debug'):
-        # Passing debug=2 causes boto to include httplib header output.
-        debug = 3
+        # Also causes boto to include httplib header output.
+        debug = DEBUGLEVEL_DUMP_REQUESTS
       elif o in ('-D', '--detailedDebug'):
         # We use debug level 3 to ask gsutil code to output more detailed
         # debug output. This is a bit of a hack since it overloads the same
         # flag that was originally implemented for boto use. And we use -DD
         # to ask for really detailed debugging (i.e., including HTTP payload).
-        if debug == 3:
-          debug = 4
+        if debug == DEBUGLEVEL_DUMP_REQUESTS:
+          debug = DEBUGLEVEL_DUMP_REQUESTS_AND_PAYLOADS
         else:
-          debug = 3
+          debug = DEBUGLEVEL_DUMP_REQUESTS
       elif o in ('-?', '--help'):
         _OutputUsageAndExit(command_runner)
       elif o in ('-h', '--header'):
@@ -315,9 +325,8 @@ def main():
     httplib2.debuglevel = debug
     if trace_token:
       sys.stderr.write(TRACE_WARNING)
-    if debug > 1:
+    if debug >= DEBUGLEVEL_DUMP_REQUESTS:
       sys.stderr.write(DEBUG_WARNING)
-    if debug >= 2:
       _ConfigureLogging(level=logging.DEBUG)
       command_runner.RunNamedCommand('ver', ['-l'])
       config_items = []
@@ -436,10 +445,10 @@ def _HandleControlC(signal_num, cur_stack_frame):
   if debug >= 2:
     stack_trace = ''.join(traceback.format_list(traceback.extract_stack()))
     _OutputAndExit(
-        'DEBUG: Caught signal %d - Exception stack trace:\n'
+        'DEBUG: Caught CTRL-C (signal %d) - Exception stack trace:\n'
         '    %s' % (signal_num, re.sub('\\n', '\n    ', stack_trace)))
   else:
-    _OutputAndExit('Caught signal %d - exiting' % signal_num)
+    _OutputAndExit('Caught CTRL-C (signal %d) - exiting' % signal_num)
 
 
 def _HandleSigQuit(signal_num, cur_stack_frame):
@@ -464,7 +473,7 @@ def _ConstructAccountProblemHelp(reason):
       "happens if you attempt to create a bucket without first having "
       "enabled billing for the project you are using. Please ensure billing is "
       "enabled for your project by following the instructions at "
-      "`Google Developers Console<https://developers.google.com/console/help/billing>`. ")
+      "`Google Cloud Platform Console<https://support.google.com/cloud/answer/6158867>`. ")
   if default_project_id:
     acct_help += (
         "In the project overview, ensure that the Project Number listed for "
@@ -536,6 +545,7 @@ def _RunNamedCommandAndHandleExceptions(
     # Catch ^\ so we can force a breakpoint in a running gsutil.
     if not IS_WINDOWS:
       RegisterSignalHandler(signal.SIGQUIT, _HandleSigQuit)
+
     return command_runner.RunNamedCommand(
         command_name, args, headers, debug_level, trace_token,
         parallel_operations, perf_trace_token=perf_trace_token)

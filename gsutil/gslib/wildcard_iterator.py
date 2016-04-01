@@ -36,6 +36,7 @@ from gslib.storage_url import StripOneSlash
 from gslib.storage_url import WILDCARD_REGEX
 from gslib.translation_helper import GenerationFromUrlAndString
 from gslib.util import FixWindowsEncodingIfNeeded
+from gslib.util import PrintableStr
 from gslib.util import UTF8
 
 
@@ -323,7 +324,9 @@ class CloudWildcardIterator(WildcardIterator):
       sys.stderr.write(
           'DEBUG: wildcard=%s, prefix=%s, delimiter=%s, '
           'prefix_wildcard=%s, suffix_wildcard=%s\n' %
-          (wildcard, prefix, delimiter, prefix_wildcard, suffix_wildcard))
+          (PrintableStr(wildcard), PrintableStr(prefix),
+           PrintableStr(delimiter), PrintableStr(prefix_wildcard),
+           PrintableStr(suffix_wildcard)))
     return (prefix, delimiter, prefix_wildcard, suffix_wildcard)
 
   def _SingleVersionMatches(self, listed_generation):
