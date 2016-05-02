@@ -6,7 +6,7 @@ import configparser
 from datetime import date, timedelta
 from subprocess import call, check_output
 import psycopg2
-import zipfile
+
 from dateutil.relativedelta import relativedelta
 
 
@@ -24,9 +24,9 @@ RED_PASSWORD = config.get('Redshift Creds', 'password')
 conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 bucket = conn.get_bucket('bibusuu')
 
-start_date = date(2015, 9, 1)
-end_date = date(2016, 4, 1)
-# end_date = date.today()
+start_date = date(2015, 1, 1)
+# end_date = date(2016, 4, 1)
+end_date = date.today() - timedelta(days=1)
 
 app_list = ['installs_com.busuu.kids.es_','installs_com.busuu.kids.en_', 'installs_com.busuu.android.zh_', 'installs_com.busuu.android.pt_', 'installs_com.busuu.android.es_', 'installs_com.busuu.android.fr_', 'installs_com.busuu.android.en_', 'installs_com.busuu.android.enc_', 'installs_com.busuu.android.tr_', 'installs_com.busuu.android.ru_', 'installs_com.busuu.android.pl_', 'installs_com.busuu.android.ja_', 'installs_com.busuu.android.it_', 'installs_com.busuu.android.de_']
 
@@ -44,18 +44,29 @@ while start_date < end_date:
         for app in app_list:
             print "Downloading download information for " + app
 
-            print "Downloading Google downloads report for %s" % start_date.strftime("%Y%m")
-            call(["gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/stats/installs/%s%s_overview.csv" % (app, start_date.strftime("%Y%m")), "google_downloads_%s_%s.csv" % (app, start_date.strftime("%Y%m"))])
+            if len(check_output(["gsutil", "ls", "gs://pubsite_prod_rev_02524245599547527969/stats/installs/%s%s_overview.csv" % (app, start_date.strftime("%Y%m"))])) > 0:
+                print "Downloading Google downloads report for %s" % start_date.strftime("%Y%m")
+                call(["gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/stats/installs/%s%s_overview.csv" % (app, start_date.strftime("%Y%m")), "google_downloads_%s_%s_2.csv" % (app, start_date.strftime("%Y%m"))])
+
+            else:
+                print "No " + app + ' for this date'
+
+            with open("google_downloads_%s_%s_2.csv" % (app, start_date.strftime("%Y%m")), 'rb') as source_file:
+                with open("google_downloads_%s_%s.csv" % (app, start_date.strftime("%Y%m")), 'w+b') as dest_file:
+                    contents = source_file.read()
+                    dest_file.write(contents.decode('utf-16').encode('utf-8'))
 
             print "Uploading Google sales report for %s" % start_date.strftime("%Y%m")
             call(["s3cmd", "put", "google_downloads_%s_%s.csv" % (app, start_date.strftime("%Y%m")), "s3://bibusuu/Google_Downloads_Reports/%s/downloads_report_%s_%s.csv" % (start_date.strftime("%Y%m"), app, start_date.strftime("%Y%m"))])
 
             print "Removing local file for %s" % start_date
             os.remove("google_downloads_%s_%s.csv" % (app, start_date.strftime("%Y%m")))
+            os.remove("google_downloads_%s_%s_2.csv" % (app, start_date.strftime("%Y%m")))
 
     start_date = start_date + relativedelta(months=1)
 
 print "Finished processing Google Sales Data \n Now Importing into redshift"
+
 
 # Update files to redshift once completed
 
@@ -71,10 +82,10 @@ print "Deleting old table Google_Downloads_2"
 cursor.execute("drop table if exists Google_Downloads_2;")
 
 print "Creating new table \n Google_Downloads_2"
-cursor.execute("Create table google_downloads_2 ( Date date, app_id varchar(50), Current_Device_Installs int, Daily_Device_Installs int, Daily_Device_Uninstalls int, Daily_Device_Upgrades int, Current_User_Installs int, Total_User_Installs int, Daily_User_Installs int, Daily_User_Uninstalls int );")
+cursor.execute("create table google_downloads_2 (Date date,app_id varchar(50),Current_Device_Installs float,Daily_Device_Installs float,Daily_Device_Uninstalls float,Daily_Device_Upgrades float,Current_User_Installs float,Total_User_Installs float,Daily_User_Installs float,Daily_User_Uninstalls float);")
 
 print "Copying Google data from S3 to  \n Google_Downloads_2"
-cursor.execute("COPY Google_Downloads_2 FROM 's3://bibusuu/Google_Downloads_Reports/'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' IGNOREHEADER 1 csv;" % (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
+cursor.execute("COPY Google_Downloads_2 FROM 's3://bibusuu/Google_Downloads_Reports/'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' ignoreheader 1 csv;" % (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
 
 print "Deleting old table Google_Downloads"
 cursor.execute("drop table if exists Google_Downloads;")
