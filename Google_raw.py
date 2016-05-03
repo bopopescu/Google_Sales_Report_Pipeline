@@ -25,7 +25,7 @@ RED_PASSWORD = config.get('Redshift Creds', 'password')
 conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 bucket = conn.get_bucket('bibusuu')
 
-start_date = date(2016, 4, 1)
+start_date = date(2014, 4, 1)
 end_date = date.today()
 
 
