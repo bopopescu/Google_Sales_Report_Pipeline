@@ -25,7 +25,7 @@ RED_PASSWORD = config.get('Redshift Creds', 'password')
 conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 bucket = conn.get_bucket('bibusuu')
 
-start_date = date(2013,9,1)
+start_date = date(2016, 4, 1)
 end_date = date.today()
 
 
@@ -41,10 +41,10 @@ while start_date < end_date:
     else:
 
         print "Downloading Google sales report for %s" % start_date.strftime("%Y%m")
-        call(["gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/sales/salesreport_%s.zip" % start_date.strftime("%Y%m"), "/home/busuuadmin/Google_Sales_Report_Pipeline/google_sales_data_%s.zip" % start_date.strftime("%Y%m")])
+        call(["gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/sales/salesreport_%s.zip" % start_date.strftime("%Y%m"), "google_sales_data_%s.zip" % start_date.strftime("%Y%m")])
 
         print "Unzipping File"
-        zip = "/home/busuuadmin/Google_Sales_Report_Pipeline/google_sales_data_%s.zip" % start_date.strftime("%Y%m")
+        zip = "google_sales_data_%s.zip" % start_date.strftime("%Y%m")
         with zipfile.ZipFile(zip, "r") as z:
             z.extractall("" )
 
@@ -53,7 +53,7 @@ while start_date < end_date:
         call(["s3cmd", "put", "salesreport_%s.csv" % start_date.strftime("%Y%m")  , "s3://bibusuu/Google_sales_reports/%s/salesreport_%s.csv" % (start_date.strftime("%Y%m"), start_date.strftime("%Y%m"))])
 
         print "Removing local file for %s.zip" % start_date
-        os.remove("/home/busuuadmin/Google_Sales_Report_Pipeline/google_sales_data_%s.zip" % start_date.strftime("%Y%m"))
+        os.remove("google_sales_data_%s.zip" % start_date.strftime("%Y%m"))
         os.remove("salesreport_%s.csv" % start_date.strftime("%Y%m"))
 
 
@@ -77,7 +77,7 @@ cursor.execute("drop table if exists Google_raw_2;")
 print "Creating new table \n Google_raw_20"
 cursor.execute("CREATE table Google_raw_20( order_number varchar(50), order_charged_date varchar(15), order_charged_ts int, financial_status varchar(25), device_model varchar(50), product_title varchar(150), product_id varchar(200), product_type varchar(100), SKU varchar(200), currency varchar(50), Price varchar(200), taxes varchar(200), charged_amount varchar(200), city varchar(250), state varchar(100), postal_code varchar(100), country varchar(20) );")
 print "Copying Google data from S3 to  \n Google_raw_2 "
-cursor.execute("COPY Google_raw_20  FROM 's3://bibusuu/Google_sales_reports/'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' IGNOREHEADER 1 delimiter as ',';" %(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
+cursor.execute("COPY Google_raw_20  FROM 's3://bibusuu/Google_sales_reports/'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' IGNOREHEADER 1 csv;" %(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
 print "Deleting old table Google_raw"
 cursor.execute("drop table if exists Google_raw;")
 print "Aggregating and Cleaning Google_raw_20"
