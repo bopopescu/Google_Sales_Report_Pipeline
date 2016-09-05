@@ -3,7 +3,7 @@ __author__ = 'brucepannaman'
 import os
 import boto
 import configparser
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from subprocess import call, check_output
 import psycopg2
 import zipfile
@@ -59,6 +59,35 @@ while start_date < end_date:
 
 
     start_date = start_date + relativedelta(months=1)
+
+# Fix for late data and rebuild of last month
+if int(datetime.now().strftime("%d")) <= 5:
+
+    start_date = datetime.now() - timedelta(days=30)
+
+    print "Getting extra data for the end of last month"
+
+    rs = check_output(["s3cmd", "ls", "s3://bibusuu/Google_sales_reports/%s/" % start_date.strftime("%Y%m")])
+
+    print "Downloading Google sales report for %s" % start_date.strftime("%Y%m")
+    call(["gsutil", "cp",
+          "gs://pubsite_prod_rev_02524245599547527969/sales/salesreport_%s.zip" % start_date.strftime("%Y%m"),
+          "google_sales_data_%s.zip" % start_date.strftime("%Y%m")])
+
+    print "Unzipping File"
+    zip = "google_sales_data_%s.zip" % start_date.strftime("%Y%m")
+    with zipfile.ZipFile(zip, "r") as z:
+        z.extractall("")
+
+    print "Uploading Google sales report for %s" % start_date.strftime("%Y%m")
+    call(["s3cmd", "put", "salesreport_%s.csv" % start_date.strftime("%Y%m"),
+          "s3://bibusuu/Google_sales_reports/%s/salesreport_%s.csv" % (
+          start_date.strftime("%Y%m"), start_date.strftime("%Y%m"))])
+
+    print "Removing local file for %s.zip" % start_date
+    os.remove("google_sales_data_%s.zip" % start_date.strftime("%Y%m"))
+    os.remove("salesreport_%s.csv" % start_date.strftime("%Y%m"))
+
 
 print "Finished processing Google Sales Data \n Now Importing into redshift"
 

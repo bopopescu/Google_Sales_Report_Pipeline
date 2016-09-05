@@ -3,7 +3,7 @@ __author__ = 'brucepannaman'
 import os
 import boto
 import configparser
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from subprocess import call, check_output
 import psycopg2
 
@@ -68,7 +68,42 @@ while start_date < end_date:
 
     start_date = start_date + relativedelta(months=1)
 
-print "Finished processing Google Sales Data \n Now Importing into redshift"
+# Fix for late data and rebuild of last month
+if int(datetime.now().strftime("%d")) <= 5:
+
+    start_date = datetime.now() - timedelta(days=30)
+
+    print "Making sure data is complete for %s" % start_date
+
+    for app in app_list:
+        print "Downloading download information for " + app
+        try:
+            if len(check_output(["gsutil", "ls", "gs://pubsite_prod_rev_02524245599547527969/stats/installs/%s%s_overview.csv" % (app, start_date.strftime("%Y%m"))])) > 0:
+                print "Downloading Google downloads report for %s" % start_date.strftime("%Y%m")
+                call(["gsutil", "cp", "gs://pubsite_prod_rev_02524245599547527969/stats/installs/%s%s_overview.csv" % (app, start_date.strftime("%Y%m")), "google_downloads_%s_%s_2.csv" % (app, start_date.strftime("%Y%m"))])
+
+            else:
+                print "No " + app + ' for this date'
+
+            with open("google_downloads_%s_%s_2.csv" % (app, start_date.strftime("%Y%m")), 'rb') as source_file:
+                with open("google_downloads_%s_%s.csv" % (app, start_date.strftime("%Y%m")), 'w+b') as dest_file:
+                    contents = source_file.read()
+                    dest_file.write(contents.decode('utf-16').encode('utf-8'))
+
+            print "Uploading Google sales report for %s" % start_date.strftime("%Y%m")
+            call(["s3cmd", "put", "google_downloads_%s_%s.csv" % (app, start_date.strftime("%Y%m")), "s3://bibusuu/Google_Downloads_Reports/%s/downloads_report_%s_%s.csv" % (
+                  start_date.strftime("%Y%m"), app, start_date.strftime("%Y%m"))])
+
+            print "Removing local file for %s" % start_date
+            os.remove("google_downloads_%s_%s.csv" % (app, start_date.strftime("%Y%m")))
+            os.remove("google_downloads_%s_%s_2.csv" % (app, start_date.strftime("%Y%m")))
+
+        except:
+            print "No app for this %s yet, maybe try tomorrow?" % start_date
+
+# Doing Redshift Stuff
+
+print "Finished processing Google Downloads Data \n Now Importing into redshift"
 
 
 # Update files to redshift once completed
