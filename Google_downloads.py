@@ -72,6 +72,7 @@ while start_date < end_date:
 # Fix for extra column 2016-10/03
 while start_date2 < end_date2:
 
+    print start_date2
     rs = check_output(["s3cmd", "ls", "s3://bibusuu/Google_Downloads_Reports2/%s/" % start_date2.strftime("%Y%m")])
 
     if len(rs) > 1 and start_date2.strftime('%Y-%m') != end_date2.strftime('%Y-%m'):
@@ -168,14 +169,14 @@ cursor.execute("drop table if exists Google_Downloads_second_bit;")
 print "Creating new table \n Google_Downloads_second_bit"
 cursor.execute("create table google_downloads_second_bit (Date date,app_id varchar(50),Current_Device_Installs float,Daily_Device_Installs float,Daily_Device_Uninstalls float,Daily_Device_Upgrades float,Current_User_Installs float,Total_User_Installs float,Daily_User_Installs float,Daily_User_Uninstalls float, active_device_installs float);")
 
-print "Copying Google data from S3 to  \n Google_Downloads_2"
+print "Copying Google data from S3 to  \n Google_Downloads_second_bit"
 cursor.execute("COPY Google_Downloads_second_bit FROM 's3://bibusuu/Google_Downloads_Reports2/'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' ignoreheader 1 csv;" % (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
 
 
 print "Deleting old table Google_Downloads"
 cursor.execute("drop table if exists Google_Downloads;")
 
-print 'Aggregating Google_Downloads_first_bit and Google_Downloads_second_bit'
+print 'Aggregating Google_Downloads_first_bit and Google_Downloads_second_bit \nto create Google_downloads'
 cursor.execute("create table google_downloads as select *, null as active_device_installs from google_downloads_first_bit union all select * from google_downloads_second_bit;")
 
 print "Dropping staging tables"
